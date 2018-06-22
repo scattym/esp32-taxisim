@@ -27,7 +27,7 @@ occupied_command_t occupiedCommand;
 print_command_t printCommand;
 int currentCommand = 0;
 
-SemaphoreHandle_t print_mux = NULL;
+SemaphoreHandle_t currentCommandSemaphore = NULL;
 unsigned long previousTouchEvent = 0;
 
 void init() {
@@ -43,7 +43,7 @@ void init() {
     uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     // We won't use a buffer for sending data.
     uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
-    print_mux = xSemaphoreCreateMutex();
+    currentCommandSemaphore = xSemaphoreCreateMutex();
 }
 
 int sendData(const char* logName, const char* data)
@@ -71,7 +71,7 @@ static void tx_task()
     static const char *TX_TASK_TAG = "TX_TASK";
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
     while( !quit ) {
-        xSemaphoreTake(print_mux, portMAX_DELAY);
+        xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         switch( currentCommand ) {
             case 0:
                 sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
@@ -84,7 +84,7 @@ static void tx_task()
                 break;
         }
 
-        xSemaphoreGive(print_mux);
+        xSemaphoreGive(currentCommandSemaphore);
 
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
@@ -107,19 +107,58 @@ static void rx_task()
     free(data);
 }
 
-void toggle_command() {
+void toggle_command(int pinNumber) {
     unsigned long now = xTaskGetTickCount();
-    ESP_LOGI("TOGGLE", "Toggle command at time %lu", now);
+    ESP_LOGI("TOGGLE", "Toggle command at time %lu on pin %d", now, pinNumber);
     if( now - previousTouchEvent < 200 ) {
         ESP_LOGI("TOGGLE", "Double tap!");
     } else {
-        xSemaphoreTake(print_mux, portMAX_DELAY);
+        xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         currentCommand = (currentCommand + 1) % 3;
-        xSemaphoreGive(print_mux);
+        xSemaphoreGive(currentCommandSemaphore);
         ESP_LOGI("TOGGLE", "Toggle command value is now %d", currentCommand);
     }
     previousTouchEvent = xTaskGetTickCount();
 }
+
+/* Can run 'make menuconfig' to choose the GPIO to blink,
+   or you can edit the following line and set a number here.
+*/
+#define BLINK_GPIO 2
+
+void blink_task(void *pvParameter)
+{
+    int quit = 0;
+    int copyOfCurrentCommand = 0;
+
+    /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
+       muxed to GPIO on reset already, but some default to other
+       functions and need to be switched to GPIO. Consult the
+       Technical Reference for a list of pads and their default
+       functions.)
+    */
+    gpio_pad_select_gpio(BLINK_GPIO);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    while( !quit )
+    {
+        xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
+        copyOfCurrentCommand = currentCommand;
+        xSemaphoreGive(currentCommandSemaphore);
+        /* Blink off (output low) */
+        for( int i=0; i <= copyOfCurrentCommand; i++ )
+        {
+            gpio_set_level(BLINK_GPIO, 1);
+            vTaskDelay(300 / portTICK_PERIOD_MS);
+            gpio_set_level(BLINK_GPIO, 0);
+            vTaskDelay(300 / portTICK_PERIOD_MS);
+
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    }
+}
+
 
 void app_main()
 {
@@ -127,6 +166,8 @@ void app_main()
     setEmitEventFunctionPtr(&toggle_command);
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
     xTaskCreate(tx_task, "uart_tx_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
+    xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touch_init();
 

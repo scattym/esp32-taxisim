@@ -15,12 +15,14 @@ software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #include "soc/sens_reg.h"
 #include "touchpad_api.h"
 
+#define TOUCHPAD_MAX_USED 1
 static const char* TAG = "Touch pad";
-static bool s_pad_activated[TOUCH_PAD_MAX];
-static uint32_t s_pad_init_val[TOUCH_PAD_MAX];
+static bool s_pad_activated[TOUCHPAD_MAX_USED];
+static uint32_t s_pad_init_val[TOUCHPAD_MAX_USED];
 void (*emitEventFunctionPtr)() = NULL;
 
-void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)()) {
+
+void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)(int)) {
     emitEventFunctionPtr = inputEmitEventFunctionPtr;
 }
 
@@ -35,14 +37,14 @@ void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)()) {
  */
 static void tp_example_set_thresholds(void)
 {
-    ESP_LOGI(TAG, "Touch pad maximum isl: %d", TOUCH_PAD_MAX);
+    ESP_LOGI(TAG, "Touch pad maximum isl: %d", TOUCHPAD_MAX_USED);
 
     uint16_t touch_value;
     //delay some time in order to make the filter work and get a initial value
     vTaskDelay(500/portTICK_PERIOD_MS);
 
-    // for (int i = 0; i<TOUCH_PAD_MAX; i++) {
-    for (int i = 4; i<5; i++) {
+    // for (int i = 0; i<TOUCHPAD_MAX_USED; i++) {
+    for (int i = 0; i<=TOUCHPAD_MAX_USED; i++) {
         //read filtered value
         touch_pad_read_filtered(i, &touch_value);
         s_pad_init_val[i] = touch_value;
@@ -80,11 +82,11 @@ static void tp_example_read_task(void *pvParameter)
         if (filter_mode == 0) {
             //interrupt mode, enable touch interrupt
             touch_pad_intr_enable();
-            for (int i = 0; i < TOUCH_PAD_MAX; i++) {
+            for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
                 if (s_pad_activated[i] == true) {
                     ESP_LOGI(TAG, "T%d activated!", i);
                     if( emitEventFunctionPtr != NULL ) {
-                        (*emitEventFunctionPtr)();
+                        (*emitEventFunctionPtr)(i);
                     }
                     // Wait a while for the pad being released
                     vTaskDelay(200 / portTICK_PERIOD_MS);
@@ -99,14 +101,14 @@ static void tp_example_read_task(void *pvParameter)
             //filter mode, disable touch interrupt
             touch_pad_intr_disable();
             touch_pad_clear_status();
-            for (int i = 0; i < TOUCH_PAD_MAX; i++) {
+            for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
                 uint16_t value = 0;
                 touch_pad_read_filtered(i, &value);
                 if (value < s_pad_init_val[i] * TOUCH_THRESH_PERCENT / 100) {
                     ESP_LOGI(TAG, "T%d activated!", i);
                     ESP_LOGI(TAG, "value: %d; init val: %d", value, s_pad_init_val[i]);
                     if( emitEventFunctionPtr != NULL ) {
-                        (*emitEventFunctionPtr)();
+                        (*emitEventFunctionPtr)(i);
                     }
                     vTaskDelay(200 / portTICK_PERIOD_MS);
                     // Reset the counter to stop changing mode.
@@ -141,7 +143,7 @@ static void tp_example_rtc_intr(void * arg)
     uint32_t pad_intr = touch_pad_get_status();
     //clear interrupt
     touch_pad_clear_status();
-    for (int i = 0; i < TOUCH_PAD_MAX; i++) {
+    for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
         if ((pad_intr >> i) & 0x01) {
             s_pad_activated[i] = true;
         }
@@ -153,7 +155,7 @@ static void tp_example_rtc_intr(void * arg)
  */
 static void tp_example_touch_pad_init()
 {
-    for (int i = 0;i< TOUCH_PAD_MAX;i++) {
+    for (int i = 0;i< TOUCHPAD_MAX_USED;i++) {
         //init RTC IO and mode for touch pad.
         touch_pad_config(i, TOUCH_THRESH_NO_USE);
     }

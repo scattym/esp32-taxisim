@@ -10,7 +10,7 @@
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 
 void touch_init();
-void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)());
+void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)(int));
 
 #endif //ESP_IDF_TEMPLATE_TOUCHPAD_H
 
