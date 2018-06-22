@@ -17,6 +17,8 @@
 #include "touchpad_api.h"
 
 static const int RX_BUF_SIZE = 1024;
+static const char* TAG = "taxisim";
+
 
 #define TXD_PIN (GPIO_NUM_14)
 #define RXD_PIN (GPIO_NUM_15)
@@ -48,13 +50,14 @@ int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
     const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+    ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
     return txBytes;
 }
 
 int sendByteArray(const char* logName, const char* data, int len) {
     const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes", txBytes);
+    ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     return txBytes;
 
 }
@@ -83,7 +86,6 @@ static void tx_task()
 
         xSemaphoreGive(print_mux);
 
-        sendData(TX_TASK_TAG, "Hello world");
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 }
