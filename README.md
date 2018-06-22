@@ -8,3 +8,6 @@ Starts three FreeRTOS tasks:
 
 When a touch event is received the esp32 will cycle to the next
 section of taxi data. Moving between vacancy, occupied and print.
+
+Make sure the xstensa tools are in your path and that the env
+var IDF_PATH is set.
