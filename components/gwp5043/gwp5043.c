@@ -59,7 +59,7 @@ int make_print_command(print_command_t* destination) {
     destination->etx = 0x03;
     destination->dle = 0x10;
     destination->commandNumber = 0xB4;
-    int_to_char_4(30, destination->length);
+    int_to_char_4(84, destination->length);
 
     int_to_char_4(1529665690, destination->datetime);
     for( int i = 0; i < 8; i++ ) {
@@ -94,7 +94,7 @@ int make_vacancy_command(vacancy_command_t* destination) {
     destination->etx = 0x03;
     destination->dle = 0x10;
     destination->commandNumber = 0xC1;
-    int_to_char_4(30, destination->length);
+    int_to_char_4(84, destination->length);
 
     int_to_char_4(1529665690, destination->datetime);
     for( int i = 0; i < 8; i++ ) {

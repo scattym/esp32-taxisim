@@ -19,9 +19,9 @@
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
 
-
 #define TXD_PIN (GPIO_NUM_14)
 #define RXD_PIN (GPIO_NUM_15)
+#define BLINK_GPIO (GPIO_NUM_2)
 vacancy_command_t vacancyCommand;
 occupied_command_t occupiedCommand;
 print_command_t printCommand;
@@ -59,7 +59,6 @@ int sendByteArray(const char* logName, const char* data, int len) {
     ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
     ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     return txBytes;
-
 }
 
 static void tx_task()
@@ -74,12 +73,14 @@ static void tx_task()
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         switch( currentCommand ) {
             case 0:
-                sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
                 break;
             case 1:
+                sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
+                break;
+            case 2:
                 sendByteArray(TX_TASK_TAG, (const char*)&printCommand, print_length);
                 break;
-            case 2 :
+            case 3:
                 sendByteArray(TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
                 break;
         }
@@ -114,17 +115,12 @@ void toggle_command(int pinNumber) {
         ESP_LOGI("TOGGLE", "Double tap!");
     } else {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
-        currentCommand = (currentCommand + 1) % 3;
+        currentCommand = (currentCommand + 1) % 4;
         xSemaphoreGive(currentCommandSemaphore);
         ESP_LOGI("TOGGLE", "Toggle command value is now %d", currentCommand);
     }
     previousTouchEvent = xTaskGetTickCount();
 }
-
-/* Can run 'make menuconfig' to choose the GPIO to blink,
-   or you can edit the following line and set a number here.
-*/
-#define BLINK_GPIO 2
 
 void blink_task(void *pvParameter)
 {
@@ -146,7 +142,7 @@ void blink_task(void *pvParameter)
         copyOfCurrentCommand = currentCommand;
         xSemaphoreGive(currentCommandSemaphore);
         /* Blink off (output low) */
-        for( int i=0; i <= copyOfCurrentCommand; i++ )
+        for( int i=0; i < copyOfCurrentCommand; i++ )
         {
             gpio_set_level(BLINK_GPIO, 1);
             vTaskDelay(300 / portTICK_PERIOD_MS);
@@ -166,7 +162,7 @@ void app_main()
     setEmitEventFunctionPtr(&toggle_command);
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
     xTaskCreate(tx_task, "uart_tx_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
-    xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touch_init();
