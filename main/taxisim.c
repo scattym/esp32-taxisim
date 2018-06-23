@@ -20,13 +20,13 @@
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
 
-#define TXD_PIN (GPIO_NUM_14)
-#define RXD_PIN (GPIO_NUM_15)
+#define TXD_PIN (GPIO_NUM_12)
+#define RXD_PIN (GPIO_NUM_13)
 #define BLINK_GPIO (GPIO_NUM_2)
 vacancy_command_t vacancyCommand;
 occupied_command_t occupiedCommand;
 print_command_t printCommand;
-int currentCommand = 0;
+int currentCommand = 4;
 
 SemaphoreHandle_t currentCommandSemaphore = NULL;
 unsigned long previousTouchEvent = 0;
@@ -70,25 +70,54 @@ static void tx_task()
     int occupied_length = make_occupied_command(&occupiedCommand);
     static const char *TX_TASK_TAG = "TX_TASK";
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
+    int copyOfCurrentCommand = 0;
+    int loopCounter = 0;
+    int loopRegion = 0;
     while( !quit ) {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
-        switch( currentCommand ) {
+        copyOfCurrentCommand = currentCommand;
+        xSemaphoreGive(currentCommandSemaphore);
+        if( copyOfCurrentCommand == 4 ) {
+            loopRegion = loopCounter % 1200;
+            if( loopRegion < 100 )
+            {
+                // Nothing to do car empty
+                copyOfCurrentCommand = 0;
+            }
+            else if( loopRegion < 600 )
+            {
+                // Car is occupied for 100-600
+                copyOfCurrentCommand = 1;
+            }
+            else if( loopRegion == 600 )
+            {
+                // Trip finished at 1200
+                copyOfCurrentCommand = 2;
+            }
+            else if( loopRegion == 620 )
+            {
+                // Print receipt at 1202
+                copyOfCurrentCommand = 3;
+            }
+        }
+        switch( copyOfCurrentCommand ) {
             case 0:
                 break;
             case 1:
-                sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
-                break;
-            case 2:
-                sendByteArray(TX_TASK_TAG, (const char*)&printCommand, print_length);
-                break;
-            case 3:
                 sendByteArray(TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
                 break;
+            case 2:
+                sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
+                break;
+            case 3:
+                sendByteArray(TX_TASK_TAG, (const char*)&printCommand, print_length);
+                break;
+            default:
+                break;
         }
+        loopCounter++;
 
-        xSemaphoreGive(currentCommandSemaphore);
-
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -116,7 +145,7 @@ void toggle_command(int pinNumber) {
         // ESP_LOGI("TOGGLE", "Double tap!");
     } else {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
-        currentCommand = (currentCommand + 1) % 4;
+        currentCommand = (currentCommand + 1) % 5;
         xSemaphoreGive(currentCommandSemaphore);
         // ESP_LOGI("TOGGLE", "Toggle command value is now %d", currentCommand);
     }
@@ -143,13 +172,27 @@ void blink_task(void *pvParameter)
         copyOfCurrentCommand = currentCommand;
         xSemaphoreGive(currentCommandSemaphore);
         /* Blink off (output low) */
-        for( int i=0; i < copyOfCurrentCommand; i++ )
+        if( copyOfCurrentCommand == 0 )
         {
-            gpio_set_level(BLINK_GPIO, 1);
-            vTaskDelay(300 / portTICK_PERIOD_MS);
+            // Mode 0 means send no commands. Turn off led.
             gpio_set_level(BLINK_GPIO, 0);
-            vTaskDelay(300 / portTICK_PERIOD_MS);
-
+        }
+        else if( copyOfCurrentCommand == 4 )
+        {
+            // Mode 4 is send commands based on timer. Turn on led.
+            gpio_set_level(BLINK_GPIO, 1);
+        }
+        else
+        {
+            // Modes 1-3 are sending each taxi messages every second.
+            // Blink led to indicate modes 1 - 3.
+            for( int i=0; i < copyOfCurrentCommand; i++ )
+            {
+                gpio_set_level(BLINK_GPIO, 1);
+                vTaskDelay(300 / portTICK_PERIOD_MS);
+                gpio_set_level(BLINK_GPIO, 0);
+                vTaskDelay(300 / portTICK_PERIOD_MS);
+            }
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -159,7 +202,6 @@ void blink_task(void *pvParameter)
 
 void app_main()
 {
-    simple_wifi_init();
     init();
     setEmitEventFunctionPtr(&toggle_command);
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
@@ -168,6 +210,7 @@ void app_main()
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touchpad_isr_init();
+    simple_wifi_init();
 
 
 }
