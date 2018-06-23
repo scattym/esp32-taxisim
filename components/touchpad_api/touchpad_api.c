@@ -19,7 +19,7 @@ software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 static const char* TAG = "Touch pad";
 static bool s_pad_activated[TOUCHPAD_MAX_USED];
 static uint32_t s_pad_init_val[TOUCHPAD_MAX_USED];
-void (*emitEventFunctionPtr)() = NULL;
+void (*emitEventFunctionPtr)(int) = NULL;
 
 
 void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)(int)) {
@@ -50,7 +50,7 @@ static void tp_example_set_thresholds(void)
         s_pad_init_val[i] = touch_value;
         ESP_LOGI(TAG, "test init touch val: %d", touch_value);
         //set interrupt threshold.
-        ESP_ERROR_CHECK(touch_pad_set_thresh(i, touch_value * 2 / 3));
+        ESP_ERROR_CHECK(touch_pad_set_thresh(i, touch_value * 3 / 4));
 
     }
 }
@@ -76,60 +76,28 @@ static void tp_example_read_task(void *pvParameter)
 {
     int quit = 0;
     static int show_message;
-    int change_mode = 0;
-    int filter_mode = 0;
     while ( !quit ) {
-        if (filter_mode == 0) {
-            //interrupt mode, enable touch interrupt
-            touch_pad_intr_enable();
-            for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
-                if (s_pad_activated[i] == true) {
-                    ESP_LOGI(TAG, "T%d activated!", i);
-                    if( emitEventFunctionPtr != NULL ) {
-                        (*emitEventFunctionPtr)(i);
-                    }
-                    // Wait a while for the pad being released
-                    vTaskDelay(200 / portTICK_PERIOD_MS);
-                    // Clear information on pad activation
-                    s_pad_activated[i] = false;
-                    // Reset the counter triggering a message
-                    // that application is running
-                    show_message = 1;
-                }
-            }
-        } else {
-            //filter mode, disable touch interrupt
-            touch_pad_intr_disable();
-            touch_pad_clear_status();
-            for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
-                uint16_t value = 0;
-                touch_pad_read_filtered(i, &value);
-                if (value < s_pad_init_val[i] * TOUCH_THRESH_PERCENT / 100) {
-                    ESP_LOGI(TAG, "T%d activated!", i);
-                    ESP_LOGI(TAG, "value: %d; init val: %d", value, s_pad_init_val[i]);
-                    if( emitEventFunctionPtr != NULL ) {
-                        (*emitEventFunctionPtr)(i);
-                    }
-                    vTaskDelay(200 / portTICK_PERIOD_MS);
-                    // Reset the counter to stop changing mode.
-                    change_mode = 1;
-                    show_message = 1;
-                }
+        //interrupt mode, enable touch interrupt
+        touch_pad_intr_enable();
+        for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
+            if (s_pad_activated[i] == true) {
+                ESP_LOGI(TAG, "T%d activated!", i);
+                // Wait a while for the pad being released
+                vTaskDelay(200 / portTICK_PERIOD_MS);
+                // Clear information on pad activation
+                s_pad_activated[i] = false;
+                // Reset the counter triggering a message
+                // that application is running
+                show_message = 1;
             }
         }
 
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
 
         // If no pad is touched, every couple of seconds, show a message
         // that application is running
         if (show_message++ % 500 == 0) {
             ESP_LOGI(TAG, "Waiting for any pad being touched...");
-        }
-        // Change mode if no pad is touched for a long time.
-        // We can compare the two different mode.
-        if (change_mode++ % 2000 == 0) {
-            filter_mode = !filter_mode;
-            ESP_LOGW(TAG, "Change mode...%s", filter_mode == 0? "interrupt mode": "filter mode");
         }
     }
 }
@@ -146,6 +114,9 @@ static void tp_example_rtc_intr(void * arg)
     for (int i = 0; i < TOUCHPAD_MAX_USED; i++) {
         if ((pad_intr >> i) & 0x01) {
             s_pad_activated[i] = true;
+            if( emitEventFunctionPtr != NULL ) {
+                (*emitEventFunctionPtr)(i);
+            }
         }
     }
 }
@@ -161,7 +132,7 @@ static void tp_example_touch_pad_init()
     }
 }
 
-void touch_init()
+void touchpad_isr_init()
 {
     // Initialize touch pad peripheral, it will start a timer to run a filter
     ESP_LOGI(TAG, "Initializing touch pad");

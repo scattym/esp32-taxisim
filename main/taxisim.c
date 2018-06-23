@@ -15,6 +15,7 @@
 #include "string.h"
 #include "gwp5043.h"
 #include "touchpad_api.h"
+#include "simple_wifi.h"
 
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
@@ -110,14 +111,14 @@ static void rx_task()
 
 void toggle_command(int pinNumber) {
     unsigned long now = xTaskGetTickCount();
-    ESP_LOGI("TOGGLE", "Toggle command at time %lu on pin %d", now, pinNumber);
+    // ESP_LOGI("TOGGLE", "Toggle command at time %lu on pin %d", now, pinNumber);
     if( now - previousTouchEvent < 200 ) {
-        ESP_LOGI("TOGGLE", "Double tap!");
+        // ESP_LOGI("TOGGLE", "Double tap!");
     } else {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         currentCommand = (currentCommand + 1) % 4;
         xSemaphoreGive(currentCommandSemaphore);
-        ESP_LOGI("TOGGLE", "Toggle command value is now %d", currentCommand);
+        // ESP_LOGI("TOGGLE", "Toggle command value is now %d", currentCommand);
     }
     previousTouchEvent = xTaskGetTickCount();
 }
@@ -158,6 +159,7 @@ void blink_task(void *pvParameter)
 
 void app_main()
 {
+    simple_wifi_init();
     init();
     setEmitEventFunctionPtr(&toggle_command);
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
@@ -165,6 +167,7 @@ void app_main()
     xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
-    touch_init();
+    touchpad_isr_init();
+
 
 }

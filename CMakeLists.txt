@@ -58,14 +58,16 @@ include_directories(${INCLUDE_DIRS})
 include_directories("build/include")
 include_directories("components/gwp5043/include/")
 include_directories("components/touchpad_api/include/")
-include_directories("components/Arduino-Temperature-Control-Library/")
+include_directories("components/simple_wifi/include/")
 
 set(SOURCE_FILES
         main/taxisim.c
         components/gwp5043/gwp5043.c
         components/gwp5043/include/gwp5043.h
         components/touchpad_api/touchpad_api.c
-        components/touchpad_api/include/touchpad_api.h)
+        components/touchpad_api/include/touchpad_api.h
+        components/simple_wifi/simple_wifi.c
+        components/simple_wifi/include/simple_wifi.h)
 list (APPEND SOURCE_FILES ${SOURCES})
 
 add_executable(esp_dimmer ${SOURCE_FILES})

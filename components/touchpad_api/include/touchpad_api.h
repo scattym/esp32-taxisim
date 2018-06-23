@@ -9,7 +9,7 @@
 #define TOUCH_THRESH_PERCENT  (80)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 
-void touch_init();
+void touchpad_isr_init();
 void setEmitEventFunctionPtr(void (*inputEmitEventFunctionPtr)(int));
 
 #endif //ESP_IDF_TEMPLATE_TOUCHPAD_H
