@@ -20,9 +20,13 @@
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
 
-#define TXD_PIN (GPIO_NUM_12)
-#define RXD_PIN (GPIO_NUM_13)
-#define BLINK_GPIO (GPIO_NUM_2)
+#define TAXI_UART UART_NUM_1
+#define TAXI_TXD_PIN (GPIO_NUM_17) // pin 7 // tx2
+#define TAXI_RXD_PIN (GPIO_NUM_16) // pin 6 // rx2
+#define BLINK_GPIO (GPIO_NUM_2) // pin 4 // d2
+#define TOUCH_PAD_PIN (GPIO_NUM_4) // pin 5 // d4
+#define ENGINE_PIN (GPIO_NUM_22) // pin 14 // d22
+#define SOS_PIN (GPIO_NUM_23) // pin 15 // d23
 vacancy_command_t vacancyCommand;
 occupied_command_t occupiedCommand;
 print_command_t printCommand;
@@ -40,23 +44,23 @@ void init() {
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_param_config(TAXI_UART, &uart_config);
+    uart_set_pin(TAXI_UART, TAXI_TXD_PIN, TAXI_RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     // We won't use a buffer for sending data.
-    uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_driver_install(TAXI_UART, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     currentCommandSemaphore = xSemaphoreCreateMutex();
 }
 
 int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+    const int txBytes = uart_write_bytes(TAXI_UART, data, len);
     ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
     return txBytes;
 }
 
 int sendByteArray(const char* logName, const char* data, int len) {
-    const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
+    const int txBytes = uart_write_bytes(TAXI_UART, data, len);
     ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
     ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     return txBytes;
@@ -128,7 +132,7 @@ static void rx_task()
     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
     uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
     while( !quit ) {
-        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
+        const int rxBytes = uart_read_bytes(TAXI_UART, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
         if (rxBytes > 0) {
             data[rxBytes] = 0;
             ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
@@ -200,6 +204,34 @@ void blink_task(void *pvParameter)
 }
 
 
+void gpio_task(void *pvParameter)
+{
+    int quit = 0;
+    /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
+       muxed to GPIO on reset already, but some default to other
+       functions and need to be switched to GPIO. Consult the
+       Technical Reference for a list of pads and their default
+       functions.)
+    */
+    gpio_pad_select_gpio(ENGINE_PIN);
+    gpio_pad_select_gpio(SOS_PIN);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(ENGINE_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SOS_PIN, GPIO_MODE_OUTPUT);
+    while( !quit )
+    {
+        gpio_set_level(ENGINE_PIN, 1);
+        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        gpio_set_level(SOS_PIN, 1);
+        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        gpio_set_level(SOS_PIN, 0);
+        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        gpio_set_level(ENGINE_PIN, 0);
+        vTaskDelay(600000 / portTICK_PERIOD_MS);
+    }
+}
+
+
 void app_main()
 {
     init();
@@ -207,6 +239,7 @@ void app_main()
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
     xTaskCreate(tx_task, "uart_tx_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
     xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
+    xTaskCreate(&gpio_task, "gpio_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touchpad_isr_init();
