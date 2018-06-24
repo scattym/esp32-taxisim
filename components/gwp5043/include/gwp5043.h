@@ -75,4 +75,8 @@ typedef struct {
 int make_occupied_command(occupied_command_t* destination);
 int make_print_command(print_command_t* destination);
 int make_vacancy_command(vacancy_command_t* destination);
+void set_timestamp_offset_vacancy(vacancy_command_t* destination, int offset);
+void set_timestamp_offset_print(print_command_t* destination, int offset);
+void set_timestamp_offset_occupied(occupied_command_t* destination, int offset);
+
 #endif //ESP_IDF_TEMPLATE_GWP5043_H

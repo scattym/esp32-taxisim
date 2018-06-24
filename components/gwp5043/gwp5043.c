@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <gwp5043.h>
 #include "include/gwp5043.h"
 
 //
@@ -31,6 +32,9 @@ int int_to_char_2(unsigned int input, unsigned char* destination) {
     return 0;
 }
 
+void set_timestamp_offset_occupied(occupied_command_t* destination, int offset) {
+    int_to_char_4(1529665690 + offset, destination->datetime);
+}
 int make_occupied_command(occupied_command_t* destination) {
     destination->stx = 0x02;
     destination->etx = 0x03;
@@ -52,6 +56,10 @@ int make_occupied_command(occupied_command_t* destination) {
     int_to_char_2(60, destination->currentTotalFare);
     return sizeof(occupied_command_t);
 
+}
+
+void set_timestamp_offset_print(print_command_t* destination, int offset) {
+    int_to_char_4(1529665690 + offset, destination->datetime);
 }
 
 int make_print_command(print_command_t* destination) {
@@ -89,6 +97,9 @@ int make_print_command(print_command_t* destination) {
     return sizeof(print_command_t);
 }
 
+void set_timestamp_offset_vacancy(vacancy_command_t* destination, int offset) {
+    int_to_char_4(1529665690 + offset, destination->datetime);
+}
 int make_vacancy_command(vacancy_command_t* destination) {
     destination->stx = 0x02;
     destination->etx = 0x03;

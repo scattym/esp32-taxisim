@@ -26,7 +26,10 @@ static const char* TAG = "taxisim";
 #define BLINK_GPIO (GPIO_NUM_2) // pin 4 // d2
 #define TOUCH_PAD_PIN (GPIO_NUM_4) // pin 5 // d4
 #define ENGINE_PIN (GPIO_NUM_22) // pin 14 // d22
+// #define ENGINE_PIN (GPIO_NUM_14) // pin 14 // d22
 #define SOS_PIN (GPIO_NUM_23) // pin 15 // d23
+#define TAXI_TX_SLEEP_MILLI 1000
+#define GPIO_SLEEP_TIME 600000
 vacancy_command_t vacancyCommand;
 occupied_command_t occupiedCommand;
 print_command_t printCommand;
@@ -108,12 +111,15 @@ static void tx_task()
             case 0:
                 break;
             case 1:
+                set_timestamp_offset_occupied(&occupiedCommand, loopCounter);
                 sendByteArray(TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
                 break;
             case 2:
+                set_timestamp_offset_vacancy(&vacancyCommand, loopCounter);
                 sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
                 break;
             case 3:
+                set_timestamp_offset_print(&printCommand, loopCounter);
                 sendByteArray(TX_TASK_TAG, (const char*)&printCommand, print_length);
                 break;
             default:
@@ -198,7 +204,7 @@ void blink_task(void *pvParameter)
                 vTaskDelay(300 / portTICK_PERIOD_MS);
             }
         }
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(TAXI_TX_SLEEP_MILLI / portTICK_PERIOD_MS);
 
     }
 }
@@ -218,16 +224,17 @@ void gpio_task(void *pvParameter)
     /* Set the GPIO as a push/pull output */
     gpio_set_direction(ENGINE_PIN, GPIO_MODE_OUTPUT);
     gpio_set_direction(SOS_PIN, GPIO_MODE_OUTPUT);
+    // gpio_set_pull_mode(ENGINE_PIN, GPIO_PULLDOWN_ENABLE);
     while( !quit )
     {
         gpio_set_level(ENGINE_PIN, 1);
-        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        vTaskDelay(GPIO_SLEEP_TIME / portTICK_PERIOD_MS);
         gpio_set_level(SOS_PIN, 1);
-        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        vTaskDelay(GPIO_SLEEP_TIME / portTICK_PERIOD_MS);
         gpio_set_level(SOS_PIN, 0);
-        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        vTaskDelay(GPIO_SLEEP_TIME / portTICK_PERIOD_MS);
         gpio_set_level(ENGINE_PIN, 0);
-        vTaskDelay(600000 / portTICK_PERIOD_MS);
+        vTaskDelay(GPIO_SLEEP_TIME / portTICK_PERIOD_MS);
     }
 }
 
