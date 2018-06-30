@@ -59,6 +59,7 @@ include_directories("build/include")
 include_directories("components/gwp5043/include/")
 include_directories("components/touchpad_api/include/")
 include_directories("components/simple_wifi/include/")
+include_directories("components/cardsim/include/")
 
 set(SOURCE_FILES
         main/taxisim.c
@@ -67,7 +68,9 @@ set(SOURCE_FILES
         components/touchpad_api/touchpad_api.c
         components/touchpad_api/include/touchpad_api.h
         components/simple_wifi/simple_wifi.c
-        components/simple_wifi/include/simple_wifi.h)
+        components/simple_wifi/include/simple_wifi.h
+        components/cardsim/include/cardsim.h
+        components/cardsim/cardsim.c)
 list (APPEND SOURCE_FILES ${SOURCES})
 
 add_executable(esp_dimmer ${SOURCE_FILES})

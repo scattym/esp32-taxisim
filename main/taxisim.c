@@ -16,6 +16,7 @@
 #include "gwp5043.h"
 #include "touchpad_api.h"
 #include "simple_wifi.h"
+#include "cardsim.h"
 
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
@@ -23,6 +24,9 @@ static const char* TAG = "taxisim";
 #define TAXI_UART UART_NUM_1
 #define TAXI_TXD_PIN (GPIO_NUM_17) // pin 7 // tx2
 #define TAXI_RXD_PIN (GPIO_NUM_16) // pin 6 // rx2
+#define CARD_READ_UART UART_NUM_2
+#define CARD_READ_TXD_PIN (GPIO_NUM_25)
+#define CARD_READ_RXD_PIN (GPIO_NUM_26)
 #define BLINK_GPIO (GPIO_NUM_2) // pin 4 // d2
 #define TOUCH_PAD_PIN (GPIO_NUM_4) // pin 5 // d4
 #define ENGINE_PIN (GPIO_NUM_22) // pin 14 // d22
@@ -40,6 +44,7 @@ unsigned long previousTouchEvent = 0;
 
 void init() {
     //touch_init();
+    // TAXI RS232 setup
     const uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -51,6 +56,19 @@ void init() {
     uart_set_pin(TAXI_UART, TAXI_TXD_PIN, TAXI_RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     // We won't use a buffer for sending data.
     uart_driver_install(TAXI_UART, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+
+    // Card Reader RS232 setup
+    const uart_config_t uart_config_card = {
+            .baud_rate = 9600,
+            .data_bits = UART_DATA_8_BITS,
+            .parity = UART_PARITY_DISABLE,
+            .stop_bits = UART_STOP_BITS_1,
+            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+    uart_param_config(CARD_READ_UART, &uart_config_card);
+    uart_set_pin(CARD_READ_UART, CARD_READ_TXD_PIN, CARD_READ_RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    // We won't use a buffer for sending data.
+    uart_driver_install(CARD_READ_UART, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     currentCommandSemaphore = xSemaphoreCreateMutex();
 }
 
@@ -62,8 +80,8 @@ int sendData(const char* logName, const char* data)
     return txBytes;
 }
 
-int sendByteArray(const char* logName, const char* data, int len) {
-    const int txBytes = uart_write_bytes(TAXI_UART, data, len);
+int sendByteArray(int uart, const char* logName, const char* data, int len) {
+    const int txBytes = uart_write_bytes(uart, data, len);
     ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
     ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     return txBytes;
@@ -112,15 +130,15 @@ static void tx_task()
                 break;
             case 1:
                 set_timestamp_offset_occupied(&occupiedCommand, loopCounter);
-                sendByteArray(TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
+                sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
                 break;
             case 2:
                 set_timestamp_offset_vacancy(&vacancyCommand, loopCounter);
-                sendByteArray(TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
+                sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
                 break;
             case 3:
                 set_timestamp_offset_print(&printCommand, loopCounter);
-                sendByteArray(TX_TASK_TAG, (const char*)&printCommand, print_length);
+                sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&printCommand, print_length);
                 break;
             default:
                 break;
@@ -239,6 +257,22 @@ void gpio_task(void *pvParameter)
 }
 
 
+void card_read_tx_task()
+{
+    int quit = 0;
+    unsigned int cardReadLength = 0;
+    unsigned char* cardData = make_card_read(&cardReadLength);
+    static const char *TX_TASK_TAG = "CARD_TX_TASK";
+    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    while( !quit ) {
+        sendByteArray(CARD_READ_UART, TX_TASK_TAG, (const char*)cardData, cardReadLength);
+
+        vTaskDelay(1200000 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main()
 {
     init();
@@ -247,6 +281,7 @@ void app_main()
     xTaskCreate(tx_task, "uart_tx_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
     xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
     xTaskCreate(&gpio_task, "gpio_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES-2, NULL);
+    xTaskCreate(&card_read_tx_task, "card_read_tx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touchpad_isr_init();
