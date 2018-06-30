@@ -50,7 +50,7 @@ static void tp_example_set_thresholds(void)
         s_pad_init_val[i] = touch_value;
         ESP_LOGI(TAG, "test init touch val: %d", touch_value);
         //set interrupt threshold.
-        ESP_ERROR_CHECK(touch_pad_set_thresh(i, touch_value * 3 / 4));
+        ESP_ERROR_CHECK(touch_pad_set_thresh(i, touch_value * 4 / 5));
 
     }
 }

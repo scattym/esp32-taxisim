@@ -91,7 +91,7 @@ static void tx_task()
                 // Nothing to do car empty
                 copyOfCurrentCommand = 0;
             }
-            else if( loopRegion < 600 )
+            else if( loopRegion == 100 )
             {
                 // Car is occupied for 100-600
                 copyOfCurrentCommand = 1;
@@ -151,7 +151,7 @@ static void rx_task()
 void toggle_command(int pinNumber) {
     unsigned long now = xTaskGetTickCount();
     // ESP_LOGI("TOGGLE", "Toggle command at time %lu on pin %d", now, pinNumber);
-    if( now - previousTouchEvent < 200 ) {
+    if( now - previousTouchEvent < 100 ) {
         // ESP_LOGI("TOGGLE", "Double tap!");
     } else {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
