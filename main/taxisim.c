@@ -216,7 +216,6 @@ void blink_task(void *pvParameter)
     {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         copyOfCurrentCommand = currentCommand;
-        currentCommand = false;
         xSemaphoreGive(currentCommandSemaphore);
         /* Blink off (output low) */
         if( copyOfCurrentCommand == 0 )
@@ -292,6 +291,7 @@ void card_read_tx_task()
     while( !quit ) {
         xSemaphoreTake(sendRfidSemaphore, portMAX_DELAY);
         copyOfSendRfidOnNextLoop = sendRfidOnNextLoop;
+        sendRfidOnNextLoop = false;
         xSemaphoreGive(sendRfidSemaphore);
         if( copyOfSendRfidOnNextLoop || loopCounter % RFID_SEND_ITERATIONS == 0 ) {
             sendByteArray(CARD_READ_UART, TX_TASK_TAG, (const char *) cardData, cardReadLength);
