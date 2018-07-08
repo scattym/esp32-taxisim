@@ -1,0 +1,4 @@
+cd $IDF_PATH
+git submodule add https://github.com/tuanpmt/espmqtt.git components/espmqtt
+
+add to CMakeLists.txt under components.
