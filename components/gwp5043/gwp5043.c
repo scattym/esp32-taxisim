@@ -100,6 +100,13 @@ int make_print_command(print_command_t* destination) {
 void set_timestamp_offset_vacancy(vacancy_command_t* destination, int offset) {
     int_to_char_4(1529665690 + offset, destination->datetime);
 }
+void set_onboard_offset_vacancy(vacancy_command_t* destination, int offset) {
+    int_to_char_4(1529665690 + offset, destination->passengerOnBoardTime);
+}
+void set_exit_offset_vacancy(vacancy_command_t* destination, int offset) {
+    int_to_char_4(1529665690 + offset, destination->passengerExitTime);
+}
+
 int make_vacancy_command(vacancy_command_t* destination) {
     destination->stx = 0x02;
     destination->etx = 0x03;

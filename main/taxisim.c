@@ -106,6 +106,7 @@ static void tx_task()
     int copyOfCurrentCommand = 0;
     int loopCounter = 0;
     int loopRegion = 0;
+    int onBoardTimeOffset = 0;
     while( !quit ) {
         xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
         copyOfCurrentCommand = currentCommand;
@@ -138,15 +139,22 @@ static void tx_task()
                 break;
             case 1:
                 set_timestamp_offset_occupied(&occupiedCommand, loopCounter);
+                if( onBoardTimeOffset == 0 ) {
+                    onBoardTimeOffset = loopCounter;
+                }
+
                 sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&occupiedCommand, occupied_length);
                 break;
             case 2:
                 set_timestamp_offset_vacancy(&vacancyCommand, loopCounter);
+                set_onboard_offset_vacancy(&vacancyCommand, onBoardTimeOffset);
+                set_exit_offset_vacancy(&vacancyCommand, loopCounter);
                 sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&vacancyCommand, vacancy_length);
                 break;
             case 3:
                 set_timestamp_offset_print(&printCommand, loopCounter);
                 sendByteArray(TAXI_UART, TX_TASK_TAG, (const char*)&printCommand, print_length);
+                onBoardTimeOffset = 0;
                 break;
             default:
                 break;
