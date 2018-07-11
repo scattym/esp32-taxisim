@@ -79,6 +79,8 @@ void set_timestamp_offset_vacancy(vacancy_command_t* destination, int offset);
 void set_onboard_offset_vacancy(vacancy_command_t* destination, int offset);
 void set_exit_offset_vacancy(vacancy_command_t* destination, int offset);
 void set_timestamp_offset_print(print_command_t* destination, int offset);
+void set_onboard_offset_print(print_command_t* destination, int offset);
+void set_exit_offset_print(print_command_t* destination, int offset);
 void set_timestamp_offset_occupied(occupied_command_t* destination, int offset);
 
 #endif //ESP_IDF_TEMPLATE_GWP5043_H
