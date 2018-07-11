@@ -1,13 +1,13 @@
 # NOTE: This file is only used for configuring CLion, use regular `make` for building.
 
-set (IDF_PATH "/home/sysadmin/esp/esp-idf/")
+set (IDF_PATH "~/esp/esp-idf/")
 
 cmake_minimum_required(VERSION 3.6)
 project(esp_idf_template)
 
 set(CMAKE_SYSTEM_NAME xtensa-esp32-elf)
 set(CMAKE_C_COMPILER xtensa-esp32-elf-gcc)
-set(CMAKE_FIND_ROOT_PATH /home/sysadmin/esp/xtensa-esp32-elf/)
+set(CMAKE_FIND_ROOT_PATH ~/esp/xtensa-esp32-elf/)
 
 set(CMAKE_CXX_STANDARD 11)
 
