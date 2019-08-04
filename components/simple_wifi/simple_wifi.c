@@ -50,13 +50,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-void wifi_init_softap(const char *hostname)
+void wifi_init_softap()
 {
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
-    tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_AP, hostname);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -81,12 +80,11 @@ void wifi_init_softap(const char *hostname)
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
 }
 
-void wifi_init_sta(const char *hostname)
+void wifi_init_sta()
 {
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
-    ESP_LOGI(TAG, "Setting hostname to: %s.", hostname);
 
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL) );
     wifi_event_group = xEventGroupCreate();
@@ -105,17 +103,18 @@ void wifi_init_sta(const char *hostname)
 
     ESP_ERROR_CHECK(esp_wifi_start() );
 
-    int ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname);
+    ESP_LOGI(TAG, "Setting hostname to: %s.", CONFIG_ESP_HOSTNAME);
+
+    int ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_ESP_HOSTNAME);
     ESP_LOGI(TAG, "Set hostname result is %d.", ret);
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
-    ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname);
-    ESP_LOGI(TAG, "Set hostname result is %d.", ret);
+
 }
 
-void simple_wifi_init(const char *hostname)
+void simple_wifi_init()
 {
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -127,10 +126,10 @@ void simple_wifi_init(const char *hostname)
     
 #if EXAMPLE_ESP_WIFI_MODE_AP
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    wifi_init_softap(hostname);
+    wifi_init_softap();
 #else
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta(hostname);
+    wifi_init_sta();
 #endif /*EXAMPLE_ESP_WIFI_MODE_AP*/
 
 }

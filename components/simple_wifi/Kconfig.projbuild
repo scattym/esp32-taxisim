@@ -1,4 +1,4 @@
-menu "Example Configuration"
+menu "Simple Wifi Config"
 
 choice ESP_WIFI_MODE
     prompt "AP or STA"
@@ -34,4 +34,10 @@ config MAX_STA_CONN
     default 4
     help
 	Max number of the STA connects to AP.
+
+config ESP_HOSTNAME
+    string "Hostname"
+    default "esp32default"
+    help
+	The hostname to use for the device.
 endmenu
