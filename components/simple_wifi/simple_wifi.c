@@ -61,14 +61,14 @@ void wifi_init_softap()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .ssid = SIMPLE_WIFI_ESP_WIFI_SSID,
+            .ssid_len = strlen(SIMPLE_WIFI_ESP_WIFI_SSID),
+            .password = SIMPLE_WIFI_ESP_WIFI_PASS,
+            .max_connection = SIMPLE_WIFI_MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
+    if (strlen(SIMPLE_WIFI_ESP_WIFI_PASS) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
@@ -77,7 +77,7 @@ void wifi_init_softap()
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_softap finished.SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+             SIMPLE_WIFI_ESP_WIFI_SSID, SIMPLE_WIFI_ESP_WIFI_PASS);
 }
 
 void wifi_init_sta()
@@ -93,8 +93,8 @@ void wifi_init_sta()
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS
+            .ssid = SIMPLE_WIFI_ESP_WIFI_SSID,
+            .password = SIMPLE_WIFI_ESP_WIFI_PASS
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -103,13 +103,13 @@ void wifi_init_sta()
 
     ESP_ERROR_CHECK(esp_wifi_start() );
 
-    ESP_LOGI(TAG, "Setting hostname to: %s.", CONFIG_ESP_HOSTNAME);
+    ESP_LOGI(TAG, "Setting hostname to: %s.", SIMPLE_WIFI_ESP_HOSTNAME);
 
-    int ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_ESP_HOSTNAME);
+    int ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, SIMPLE_WIFI_ESP_HOSTNAME);
     ESP_LOGI(TAG, "Set hostname result is %d.", ret);
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
-    ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", SIMPLE_WIFI_ESP_WIFI_SSID, SIMPLE_WIFI_ESP_WIFI_PASS);
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
 
 }
@@ -124,12 +124,12 @@ void simple_wifi_init()
     }
     ESP_ERROR_CHECK(ret);
     
-#if EXAMPLE_ESP_WIFI_MODE_AP
+#if SIMPLE_WIFI_ESP_WIFI_MODE_AP
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
 #else
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
-#endif /*EXAMPLE_ESP_WIFI_MODE_AP*/
+#endif /*SIMPLE_WIFI_ESP_WIFI_MODE_AP*/
 
 }
