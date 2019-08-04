@@ -32,6 +32,8 @@ static const char* TAG = "taxisim";
 #define ENGINE_PIN (GPIO_NUM_22) // pin 14 // d22
 // #define ENGINE_PIN (GPIO_NUM_14) // pin 14 // d22
 #define SOS_PIN (GPIO_NUM_23) // pin 15 // d23
+#define IO_PIN_1 (GPIO_NUM_19)
+#define IO_PIN_2 (GPIO_NUM_21)
 #define TAXI_TX_SLEEP_MILLI 1000
 #define GPIO_SLEEP_TIME 600000
 #define GPIO_START_DELAY_MS 30000
@@ -250,8 +252,16 @@ void blink_task(void *pvParameter)
             for( int i=0; i < copyOfCurrentCommand; i++ )
             {
                 gpio_set_level(BLINK_GPIO, 1);
+                gpio_set_level(ENGINE_PIN, 1);
+                gpio_set_level(SOS_PIN, 1);
+                gpio_set_level(IO_PIN_1, 1);
+                gpio_set_level(IO_PIN_2, 1);
                 vTaskDelay(300 / portTICK_PERIOD_MS);
                 gpio_set_level(BLINK_GPIO, 0);
+                gpio_set_level(ENGINE_PIN, 0);
+                gpio_set_level(SOS_PIN, 0);
+                gpio_set_level(IO_PIN_1, 0);
+                gpio_set_level(IO_PIN_2, 0);
                 vTaskDelay(300 / portTICK_PERIOD_MS);
             }
         }
@@ -274,9 +284,13 @@ void gpio_task(void *pvParameter)
 
     gpio_pad_select_gpio(ENGINE_PIN);
     gpio_pad_select_gpio(SOS_PIN);
+    gpio_pad_select_gpio(IO_PIN_1);
+    gpio_pad_select_gpio(IO_PIN_2);
     /* Set the GPIO as a push/pull output */
     gpio_set_direction(ENGINE_PIN, GPIO_MODE_OUTPUT);
     gpio_set_direction(SOS_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(IO_PIN_1, GPIO_MODE_OUTPUT);
+    gpio_set_direction(IO_PIN_2, GPIO_MODE_OUTPUT);
     // gpio_set_pull_mode(ENGINE_PIN, GPIO_PULLDOWN_ENABLE);
     while( !quit )
     {
@@ -298,6 +312,7 @@ void card_read_tx_task()
     unsigned int cardReadLength = 0;
     unsigned char* cardData = make_card_read(&cardReadLength);
     static const char *TX_TASK_TAG = "CARD_TX_TASK";
+    int copyOfCurrentCommand = 0;
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
     vTaskDelay(RFID_START_DELAY_MS / portTICK_PERIOD_MS);
 
@@ -306,7 +321,14 @@ void card_read_tx_task()
     while( !quit ) {
         xSemaphoreTake(sendRfidSemaphore, portMAX_DELAY);
         copyOfSendRfidOnNextLoop = sendRfidOnNextLoop;
-        sendRfidOnNextLoop = false;
+        xSemaphoreTake(currentCommandSemaphore, portMAX_DELAY);
+        copyOfCurrentCommand = currentCommand;
+        xSemaphoreGive(currentCommandSemaphore);
+        if( copyOfCurrentCommand > 0 && copyOfCurrentCommand < 4 ) {
+            sendRfidOnNextLoop = true;
+        } else {
+            sendRfidOnNextLoop = false;
+        }
         xSemaphoreGive(sendRfidSemaphore);
         if( copyOfSendRfidOnNextLoop || loopCounter % RFID_SEND_ITERATIONS == 0 ) {
             sendByteArray(CARD_READ_UART, TX_TASK_TAG, (const char *) cardData, cardReadLength);
