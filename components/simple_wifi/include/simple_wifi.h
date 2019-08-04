@@ -27,6 +27,6 @@
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
 #define EXAMPLE_MAX_STA_CONN       CONFIG_MAX_STA_CONN
 
-void simple_wifi_init();
+void simple_wifi_init(const char *);
 
 #endif //ESP_IDF_TEMPLATE_SIMPLE_WIFI_H

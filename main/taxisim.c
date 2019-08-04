@@ -17,6 +17,8 @@
 #include "touchpad_api.h"
 #include "simple_wifi.h"
 #include "cardsim.h"
+#include "driver/gpio.h"
+//#include "esp32/rom/gpio.h"
 
 static const int RX_BUF_SIZE = 1024;
 static const char* TAG = "taxisim";
@@ -360,6 +362,18 @@ static void card_read_rx_task()
 
 void app_main()
 {
+    //tcpip_adapter_init();
+    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+
+    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
+    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
+    esp_log_level_set("WIFI", ESP_LOG_VERBOSE);
+
+    simple_wifi_init("esp32-taxisim");
+
     init();
     setEmitEventFunctionPtr(&toggle_command);
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
@@ -371,7 +385,6 @@ void app_main()
 
     //xTaskCreate(&tp_example_read_task, "touch_pad_read_task", 2048, NULL, 5, NULL);
     touchpad_isr_init();
-    simple_wifi_init();
 
 
 }

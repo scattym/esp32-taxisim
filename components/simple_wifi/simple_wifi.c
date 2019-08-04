@@ -50,12 +50,13 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-void wifi_init_softap()
+void wifi_init_softap(const char *hostname)
 {
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_AP, hostname);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -80,32 +81,41 @@ void wifi_init_softap()
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
 }
 
-void wifi_init_sta()
+void wifi_init_sta(const char *hostname)
 {
     wifi_event_group = xEventGroupCreate();
 
     tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL) );
+    ESP_LOGI(TAG, "Setting hostname to: %s.", hostname);
 
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL) );
+    wifi_event_group = xEventGroupCreate();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wifi_config_t wifi_config = {
         .sta = {
             .ssid = EXAMPLE_ESP_WIFI_SSID,
             .password = EXAMPLE_ESP_WIFI_PASS
         },
     };
-
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+
     ESP_ERROR_CHECK(esp_wifi_start() );
 
+    int ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname);
+    ESP_LOGI(TAG, "Set hostname result is %d.", ret);
+
     ESP_LOGI(TAG, "wifi_init_sta finished.");
-    ESP_LOGI(TAG, "connect to ap SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+    ret = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname);
+    ESP_LOGI(TAG, "Set hostname result is %d.", ret);
 }
 
-void simple_wifi_init()
+void simple_wifi_init(const char *hostname)
 {
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -117,10 +127,10 @@ void simple_wifi_init()
     
 #if EXAMPLE_ESP_WIFI_MODE_AP
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    wifi_init_softap();
+    wifi_init_softap(hostname);
 #else
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
+    wifi_init_sta(hostname);
 #endif /*EXAMPLE_ESP_WIFI_MODE_AP*/
 
 }

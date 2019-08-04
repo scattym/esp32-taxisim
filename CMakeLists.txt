@@ -22,7 +22,11 @@ set(COMPONENTS
         coap
         cxx
         driver
+        esp_common
         esp32
+        esp_rom
+        esp_event
+        esp_wifi
         esptool_py
         ethernet
         expat
