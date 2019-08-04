@@ -18,6 +18,7 @@
 #include "simple_wifi.h"
 #include "cardsim.h"
 #include "driver/gpio.h"
+#include "nvs_flash.h"
 //#include "esp32/rom/gpio.h"
 
 static const int RX_BUF_SIZE = 1024;
